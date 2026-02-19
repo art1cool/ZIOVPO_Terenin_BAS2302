@@ -41,7 +41,4 @@ public class UserEntity {
 
     @Column(unique = true,  nullable = false)
     private String name;
-
-    @OneToMany(mappedBy = "user")
-    private List<PlaylistEntity> playlist;
 }

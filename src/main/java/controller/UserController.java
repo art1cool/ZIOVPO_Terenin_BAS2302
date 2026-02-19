@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import service.UserService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import util.MappingUtil;
+//import util.MappingUtil;
 
 import static org.springframework.http.HttpStatus.CREATED;
 import entity.UserEntity;
@@ -21,7 +21,7 @@ import entity.UserEntity;
 public class UserController {
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
-    private final MappingUtil mappingUtil;
+    //private final MappingUtil mappingUtil;
 
     @GetMapping
     @PreAuthorize("hasAuthority('read')")
@@ -30,7 +30,7 @@ public class UserController {
         if (entity == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(mappingUtil.toDto(entity));
+        //return ResponseEntity.ok(mappingUtil.toDto(entity));
     }
 
     @PostMapping
@@ -39,8 +39,8 @@ public class UserController {
             @Valid @RequestBody User user){
         UserEntity savedEntity = userService.addUser(user);
         return ResponseEntity.status(CREATED)
-                .header("Name", user.getName())
-                .body(mappingUtil.toDto(savedEntity));
+                .header("Name", user.getName());
+                //.body(mappingUtil.toDto(savedEntity));
     }
 
     @DeleteMapping("by-name/{name}")
@@ -60,6 +60,6 @@ public class UserController {
         if (updated == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(mappingUtil.toDto(updated));
+        //return ResponseEntity.ok(mappingUtil.toDto(updated));
     }
 }
