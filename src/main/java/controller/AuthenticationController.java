@@ -54,7 +54,7 @@ public class AuthenticationController {
                             email, request.getPassword())
             );
 
-            String accessToken = jwtTokenProvider.createToken(
+            String accessToken = jwtTokenProvider.createAccessToken(
                     email, user.getRole().getGrantedAuthorities());
             String refreshToken = jwtTokenProvider.createRefreshToken(email);
 
@@ -116,7 +116,7 @@ public class AuthenticationController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired session");
             }
 
-            String newAccessToken = jwtTokenProvider.createToken(email, user.getRole().getGrantedAuthorities());
+            String newAccessToken = jwtTokenProvider.createAccessToken(email, user.getRole().getGrantedAuthorities());
             String newRefreshToken = jwtTokenProvider.createRefreshToken(email);
 
             // Создаем новую сессию и помечаем старую как LOGGED_OUT

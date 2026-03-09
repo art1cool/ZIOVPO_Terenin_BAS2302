@@ -41,7 +41,7 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    public String createToken(
+    public String createAccessToken(
             String email, Set<GrantedAuthority> authorities) {
 
         Claims claims = Jwts.claims().setSubject(email);

@@ -3,7 +3,7 @@ spring:
     name: "demo-application"
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
+    url: jdbc:postgresql://localhost:5432/ziovpo
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
   jpa:
