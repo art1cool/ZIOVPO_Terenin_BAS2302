@@ -1,5 +1,6 @@
 package service;
 
+import controller.GlobalExceptionHandler;
 import entity.*;
 import enums.*;
 import lombok.RequiredArgsConstructor;
@@ -30,18 +31,12 @@ public class LicenseService {
     private final MappingUtil mappingUtil;
     private final DeviceRepository deviceRepository;
     private final DeviceLicenseRepository deviceLicenseRepository;
+    private final SigningService signingService;
 
     private UserEntity getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Current user not found"));
-    }
-
-    private boolean isAdmin() {
-        return SecurityContextHolder.getContext().getAuthentication()
-                .getAuthorities()
-                .stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("Current user not found"));
     }
 
     private String generateLicenseCode() {
@@ -50,14 +45,10 @@ public class LicenseService {
 
     @Transactional
     public LicenseResponse createLicense(CreateLicenseRequest request) {
-        if (!isAdmin()) {
-            throw new AccessDeniedException("Only admin can create licenses");
-        }
-
         ProductEntity product = productService.getProductOrFail(request.getProductId());
         LicenseTypeEntity licenseType = licenseTypeService.getTypeOrFail(request.getTypeId());
         UserEntity owner = userRepository.findById(request.getOwnerId())
-                .orElseThrow(() -> new RuntimeException("Owner user not found with id: " + request.getOwnerId()));
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("Owner user not found with id: " + request.getOwnerId()));
 
         LicenseEntity license = new LicenseEntity();
         license.setCode(generateLicenseCode());
@@ -85,17 +76,17 @@ public class LicenseService {
     }
 
     @Transactional
-    public Ticket activateLicense(ActivateLicenseRequest request) {
+    public TicketResponse activateLicense(ActivateLicenseRequest request) {
         UserEntity currentUser = getCurrentUser();
 
         LicenseEntity license = licenseRepository.findByCode(request.getActivationKey())
-                .orElseThrow(() -> new RuntimeException("License not found with code: " + request.getActivationKey()));
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("License not found with code: " + request.getActivationKey()));
 
         if (license.isBlocked()) {
-            throw new RuntimeException("License is blocked");
+            throw new GlobalExceptionHandler.ConflictException("License is blocked");
         }
         if (license.getExpiresAt() != null && license.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("License has expired");
+            throw new GlobalExceptionHandler.ConflictException("License has expired");
         }
 
         if (license.getUser() != null && !license.getUser().getId().equals(currentUser.getId())) {
@@ -115,12 +106,12 @@ public class LicenseService {
                 .findByLicenseAndDeviceAndStatus(license, device, DeviceLicenseStatus.ACTIVE)
                 .isPresent();
         if (alreadyActive) {
-            return buildTicket(license, device);
+            return buildTicketResponse(license, device);
         }
 
         long activeDevices = deviceLicenseRepository.countByLicenseAndStatus(license, DeviceLicenseStatus.ACTIVE);
         if (activeDevices >= license.getDeviceCount()) {
-            throw new RuntimeException("Maximum number of devices (" + license.getDeviceCount() + ") reached for this license");
+            throw new GlobalExceptionHandler.ConflictException("Maximum number of devices (" + license.getDeviceCount() + ") reached for this license");
         }
 
         boolean isFirstActivation = (license.getUser() == null);
@@ -153,10 +144,10 @@ public class LicenseService {
         history.setTimestamp(LocalDateTime.now());
         historyRepository.save(history);
 
-        return buildTicket(license, device);
+        return buildTicketResponse(license, device);
     }
 
-    private static final long TICKET_LIFETIME_SECONDS = 300;
+    private static final long TICKET_LIFETIME_SECONDS = 172800;
 
     private Ticket buildTicket(LicenseEntity license, DeviceEntity device) {
         Ticket ticket = new Ticket();
@@ -173,60 +164,69 @@ public class LicenseService {
         return ticket;
     }
 
+    private TicketResponse buildTicketResponse(LicenseEntity license, DeviceEntity device) {
+        Ticket ticket = buildTicket(license, device);
+        String signature = signingService.sign(ticket);
+        TicketResponse response = new TicketResponse();
+        response.setTicket(ticket);
+        response.setSignature(signature);
+        return response;
+    }
+
     @Transactional(readOnly = true)
-    public Ticket verifyLicense(String licenseCode, String deviceIdentifier) {
+    public TicketResponse verifyLicense(String licenseCode, String deviceIdentifier) {
         LicenseEntity license = licenseRepository.findByCode(licenseCode)
-                .orElseThrow(() -> new RuntimeException("License not found with code: " + licenseCode));
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("License not found with code: " + licenseCode));
 
         if (license.isBlocked()) {
-            throw new RuntimeException("License is blocked");
+            throw new GlobalExceptionHandler.ConflictException("License is blocked");
         }
 
         if (license.getExpiresAt() != null && license.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("License has expired");
+            throw new GlobalExceptionHandler.ConflictException("License has expired");
         }
 
         DeviceEntity device = deviceRepository.findByDeviceIdentifier(deviceIdentifier)
-                .orElseThrow(() -> new RuntimeException("Device not found with identifier: " + deviceIdentifier));
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("Device not found with identifier: " + deviceIdentifier));
 
         boolean deviceActive = deviceLicenseRepository
                 .findByLicenseAndDeviceAndStatus(license, device, DeviceLicenseStatus.ACTIVE)
                 .isPresent();
         if (!deviceActive) {
-            throw new RuntimeException("Device is not activated for this license");
+            throw new GlobalExceptionHandler.ConflictException("Device is not activated for this license");
         }
 
-        return buildTicket(license, device);
+        return buildTicketResponse(license, device);
     }
 
     @Transactional
-    public Ticket renewLicense(RenewLicenseRequest request) {
+    public TicketResponse renewLicense(RenewLicenseRequest request) {
         UserEntity currentUser = getCurrentUser();
 
         LicenseEntity license = licenseRepository.findByCode(request.getActivationKey())
-                .orElseThrow(() -> new RuntimeException("License not found with code: " + request.getActivationKey()));
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("License not found with code: " + request.getActivationKey()));
 
         if (license.getUser() == null || !license.getUser().getId().equals(currentUser.getId())) {
             throw new AccessDeniedException("You are not the owner of this license");
         }
 
         if (license.isBlocked()) {
-            throw new RuntimeException("License is blocked");
+            throw new GlobalExceptionHandler.ConflictException("License is blocked");
         }
 
         LocalDateTime now = LocalDateTime.now();
         if (license.getExpiresAt() == null) {
-            throw new RuntimeException("Perpetual license cannot be renewed");
+            throw new GlobalExceptionHandler.InvalidRequestException("Perpetual license cannot be renewed");
         }
         boolean isExpiringSoon = license.getExpiresAt().isBefore(now.plusDays(7));
         boolean isExpired = license.getExpiresAt().isBefore(now);
         if (!isExpired && !isExpiringSoon) {
-            throw new RuntimeException("License is not yet due for renewal (expires more than 7 days from now)");
+            throw new GlobalExceptionHandler.ConflictException("License is not yet due for renewal (expires more than 7 days from now)");
         }
 
         Integer durationDays = license.getLicenseType().getDurationDays();
         if (durationDays == null) {
-            throw new RuntimeException("License type has no duration defined – cannot renew");
+            throw new GlobalExceptionHandler.ConflictException("License type has no duration defined – cannot renew");
         }
 
         LocalDateTime newExpiresAt;
@@ -250,8 +250,8 @@ public class LicenseService {
         DeviceEntity anyDevice = deviceLicenseRepository
                 .findFirstByLicenseAndStatus(license, DeviceLicenseStatus.ACTIVE)
                 .map(DeviceLicenseEntity::getDevice)
-                .orElseThrow(() -> new RuntimeException("No active device found for this license – cannot build ticket"));
+                .orElseThrow(() -> new GlobalExceptionHandler.ConflictException("No active device found for this license – cannot build ticket"));
 
-        return buildTicket(license, anyDevice);
+        return buildTicketResponse(license, anyDevice);
     }
 }

@@ -1,5 +1,6 @@
 package service;
 
+import controller.GlobalExceptionHandler;
 import entity.ProductEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,6 @@ public class ProductService {
 
     public ProductEntity getProductOrFail(UUID productId) {
         return productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("Product not found with id: " + productId));
     }
 }

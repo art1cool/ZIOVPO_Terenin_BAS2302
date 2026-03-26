@@ -1,3 +1,6 @@
+src/main/resources/Signature.jks
+src/main/resources/public-cert.pem
+src/main/resources/public-key.pem
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

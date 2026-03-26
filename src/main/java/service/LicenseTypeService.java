@@ -1,5 +1,6 @@
 package service;
 
+import controller.GlobalExceptionHandler;
 import entity.LicenseTypeEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,6 @@ public class LicenseTypeService {
 
     public LicenseTypeEntity getTypeOrFail(UUID typeId) {
         return licenseTypeRepository.findById(typeId)
-                .orElseThrow(() -> new RuntimeException("License type not found with id: " + typeId));
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException("License type not found with id: " + typeId));
     }
 }

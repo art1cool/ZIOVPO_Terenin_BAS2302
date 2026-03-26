@@ -29,6 +29,12 @@ server:
     key-alias:
       server_cert1BIB23342
 
+signature:
+  key-store-path: classpath:Signature.jks
+  key-store-type: JKS
+  key-store-password: ${SIGNATURE_PASS}
+  key-alias: Signature
+
 jwt:
   accessExpiration: 900000
   refreshExpiration: 604800000

@@ -25,24 +25,24 @@ public class LicenseController {
 
     @PostMapping("/activate")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Ticket> activateLicense(@Valid @RequestBody ActivateLicenseRequest request) {
-        Ticket ticket = licenseService.activateLicense(request);
+    public ResponseEntity<TicketResponse> activateLicense(@Valid @RequestBody ActivateLicenseRequest request) {
+        TicketResponse ticket = licenseService.activateLicense(request);
         return ResponseEntity.ok(ticket);
     }
 
     @GetMapping("/verify")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Ticket> verifyLicense(
+    public ResponseEntity<TicketResponse> verifyLicense(
             @RequestParam String code,
-            @RequestParam(required = false) String deviceId) {
-        Ticket ticket = licenseService.verifyLicense(code, deviceId);
+            @RequestParam String deviceId) {
+        TicketResponse ticket = licenseService.verifyLicense(code, deviceId);
         return ResponseEntity.ok(ticket);
     }
 
     @PostMapping("/renew")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Ticket> renewLicense(@Valid @RequestBody RenewLicenseRequest request) {
-        Ticket ticket = licenseService.renewLicense(request);
+    public ResponseEntity<TicketResponse> renewLicense(@Valid @RequestBody RenewLicenseRequest request) {
+        TicketResponse ticket = licenseService.renewLicense(request);
         return ResponseEntity.ok(ticket);
     }
 }
