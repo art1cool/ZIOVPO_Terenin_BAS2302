@@ -29,4 +29,17 @@ public class SigningServiceImpl implements SigningService {
             throw new RuntimeException("Failed to generate digital signature", e);
         }
     }
+
+    @Override
+    public byte[] signBytes(byte[] data) {
+        try {
+            PrivateKey privateKey = keyProvider.getSigningKey();
+            Signature signature = Signature.getInstance("SHA256withRSA");
+            signature.initSign(privateKey);
+            signature.update(data);
+            return signature.sign();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to sign byte array", e);
+        }
+    }
 }
