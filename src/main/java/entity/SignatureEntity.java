@@ -25,7 +25,7 @@ public class SignatureEntity {
     @Column(nullable = false)
     private String threatName;
 
-    @Column(name = "first_bytes_hex", nullable = false)
+    @Column(name = "first_bytes_hex", columnDefinition = "TEXT", nullable = false)
     private String firstBytesHex;
 
     @Column(name = "remainder_hash_hex", nullable = false)
@@ -52,4 +52,7 @@ public class SignatureEntity {
 
     @Column(columnDefinition = "TEXT")
     private String digitalSignatureBase64;
+
+    @Column(name = "minio_object_name")
+    private String minioObjectName;
 }

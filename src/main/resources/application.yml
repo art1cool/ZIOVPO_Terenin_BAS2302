@@ -13,6 +13,10 @@ spring:
   sql:
     init:
       mode: always
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
 
 
 server:
@@ -39,3 +43,9 @@ jwt:
   accessExpiration: 900000
   refreshExpiration: 604800000
   secret: ${JWT_SECRET}
+
+minio:
+  url: http://localhost:9000
+  access-key: ${MINIO_ACCESS}
+  secret-key: ${MINIO_SECRET}
+  bucket-name: signature-files
